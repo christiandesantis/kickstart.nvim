@@ -99,7 +99,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -226,6 +226,45 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     vim.hl.on_yank()
   end,
 })
+
+vim.api.nvim_create_autocmd('TermOpen', {
+  group = vim.api.nvim_create_augroup('custom-term-open', { clear = true }),
+  callback = function()
+    vim.opt.number = false
+    vim.opt.relativenumber = false
+  end,
+})
+
+local job_id = 0
+vim.keymap.set('n', '<leader>xt', function()
+  vim.cmd.vnew()
+  vim.cmd.term()
+  vim.cmd.wincmd 'J'
+  vim.api.nvim_win_set_height(0, 5)
+
+  job_id = vim.bo.channel
+end, { desc = 'e[X]ecute [T]erminal' })
+
+vim.keymap.set('n', '<leader>xc', function()
+  vim.fn.chansend(job_id, { 'pnpm typecheck\r\n' })
+end, { desc = 'e[X]ecute type[C]heck' })
+
+vim.keymap.set('n', '<leader>xb', function()
+  vim.fn.chansend(job_id, { 'pnpm check\r\n' })
+end, { desc = 'e[X]ecute [B]iome' })
+
+vim.keymap.set('n', '<leader>e', ':NvimTreeToggle<CR>', { desc = 'Toggle NvimTree' })
+
+-- Tabby
+vim.keymap.set("n", "<leader>ta", ":$tabnew<CR>", { noremap = true, desc = '[T]ab [A]dd new' })
+vim.keymap.set("n", "<leader>tc", ":tabclose<CR>", { noremap = true, desc = '[T]ab [C]lose' })
+vim.keymap.set("n", "<leader>to", ":tabonly<CR>", { noremap = true, desc = '[T]ab [O]nly (close others)' })
+vim.keymap.set("n", "<leader>tn", ":tabn<CR>", { noremap = true, desc = '[T]ab [N]ext' })
+vim.keymap.set("n", "<leader>tp", ":tabp<CR>", { noremap = true, desc = '[T]ab [P]revious' })
+-- move current tab to previous position
+vim.keymap.set("n", "<leader>tmp", ":-tabmove<CR>", { noremap = true, desc = '[T]ab [M]ove [P]revious' })
+-- move current tab to next position
+vim.keymap.set("n", "<leader>tmn", ":+tabmove<CR>", { noremap = true, desc = '[T]ab [M]ove [N]ext' })
 
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
@@ -431,7 +470,6 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
-
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
@@ -774,6 +812,14 @@ require('lazy').setup({
           }
         end
       end,
+      formatters = {
+        prettier = {
+          require_cwd = true,
+        },
+        biome = {
+          require_cwd = true,
+        },
+      },
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
@@ -781,6 +827,8 @@ require('lazy').setup({
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'biome', 'prettier', stop_after_first = true },
+        typescript = { 'biome', 'prettier', stop_after_first = true },
       },
     },
   },
