@@ -256,15 +256,15 @@ end, { desc = 'e[X]ecute [B]iome' })
 vim.keymap.set('n', '<leader>e', ':NvimTreeToggle<CR>', { desc = 'Toggle NvimTree' })
 
 -- Tabby
-vim.keymap.set("n", "<leader>ta", ":$tabnew<CR>", { noremap = true, desc = '[T]ab [A]dd new' })
-vim.keymap.set("n", "<leader>tc", ":tabclose<CR>", { noremap = true, desc = '[T]ab [C]lose' })
-vim.keymap.set("n", "<leader>to", ":tabonly<CR>", { noremap = true, desc = '[T]ab [O]nly (close others)' })
-vim.keymap.set("n", "<leader>tn", ":tabn<CR>", { noremap = true, desc = '[T]ab [N]ext' })
-vim.keymap.set("n", "<leader>tp", ":tabp<CR>", { noremap = true, desc = '[T]ab [P]revious' })
+vim.keymap.set('n', '<leader>ta', ':$tabnew<CR>', { noremap = true, desc = '[T]ab [A]dd new' })
+vim.keymap.set('n', '<leader>tc', ':tabclose<CR>', { noremap = true, desc = '[T]ab [C]lose' })
+vim.keymap.set('n', '<leader>to', ':tabonly<CR>', { noremap = true, desc = '[T]ab [O]nly (close others)' })
+vim.keymap.set('n', '<leader>tn', ':tabn<CR>', { noremap = true, desc = '[T]ab [N]ext' })
+vim.keymap.set('n', '<leader>tp', ':tabp<CR>', { noremap = true, desc = '[T]ab [P]revious' })
 -- move current tab to previous position
-vim.keymap.set("n", "<leader>tmp", ":-tabmove<CR>", { noremap = true, desc = '[T]ab [M]ove [P]revious' })
+vim.keymap.set('n', '<leader>tmp', ':-tabmove<CR>', { noremap = true, desc = '[T]ab [M]ove [P]revious' })
 -- move current tab to next position
-vim.keymap.set("n", "<leader>tmn", ":+tabmove<CR>", { noremap = true, desc = '[T]ab [M]ove [N]ext' })
+vim.keymap.set('n', '<leader>tmn', ':+tabmove<CR>', { noremap = true, desc = '[T]ab [M]ove [N]ext' })
 
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
@@ -295,6 +295,35 @@ rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+
+  -- GitHub Copilot
+  {
+    'github/copilot.vim',
+    lazy = false, -- Load immediately, not on InsertEnter
+    priority = 1000, -- Load with high priority
+    config = function()
+      -- Disable default Tab mapping to avoid conflict with indentation
+      vim.g.copilot_no_tab_map = true
+
+      -- Use Ctrl+J to accept suggestions (official GitHub recommendation)
+      vim.keymap.set('i', '<C-J>', 'copilot#Accept("\\<CR>")', {
+        expr = true,
+        replace_keycodes = false,
+      })
+
+      -- Default navigation keys (built-in Copilot.vim keybindings)
+      vim.keymap.set('i', '<M-]>', '<Plug>(copilot-next)')
+      vim.keymap.set('i', '<M-[>', '<Plug>(copilot-previous)')
+      vim.keymap.set('i', '<M-\\>', '<Plug>(copilot-suggest)')
+      vim.keymap.set('i', '<M-Right>', '<Plug>(copilot-accept-word)')
+      vim.keymap.set('i', '<M-C-Right>', '<Plug>(copilot-accept-line)')
+
+      -- Exclude dotfiles from Copilot analysis for security
+      vim.g.copilot_filetypes = {
+        ['.'] = false, -- Files starting with dot (like .env, .gitignore, etc.)
+      }
+    end,
+  },
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
