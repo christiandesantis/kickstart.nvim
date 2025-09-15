@@ -174,6 +174,59 @@ vim.o.scrolloff = 10
 -- See `:help 'confirm'`
 vim.o.confirm = true
 
+-- Enable automatic file reloading when changed externally
+vim.o.autoread = true
+
+-- Enhanced auto-reload with activity tracking and tmux support
+local last_activity = vim.loop.now()
+local check_timer = nil
+
+-- Track user activity
+vim.api.nvim_create_augroup("ActivityTracker", { clear = true })
+vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "TextChanged", "TextChangedI" }, {
+  group = "ActivityTracker",
+  pattern = "*",
+  callback = function()
+    last_activity = vim.loop.now()
+  end,
+})
+
+-- Create timer for checking file changes
+check_timer = vim.uv.new_timer()
+check_timer:start(2000, 2000, vim.schedule_wrap(function()
+  local now = vim.loop.now()
+  local idle_time = now - last_activity
+  
+  -- Only check if idle for 2+ seconds and buffer has no unsaved changes
+  if idle_time >= 2000 and not vim.bo.modified then
+    vim.cmd("silent! checktime")
+    -- Force screen redraw for tmux visibility
+    vim.cmd("redraw")
+  end
+end))
+
+-- Also check on focus gained and buffer enter (immediate response)
+vim.api.nvim_create_augroup("AutoRefresh", { clear = true })
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
+  group = "AutoRefresh",
+  pattern = "*",
+  callback = function()
+    if vim.fn.mode() ~= "c" and not vim.bo.modified then
+      vim.cmd("checktime")
+      vim.cmd("redraw")
+    end
+  end,
+})
+
+-- Handle file change notifications
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
+  group = "AutoRefresh",
+  pattern = "*",
+  callback = function()
+    vim.notify("File reloaded from disk", vim.log.levels.INFO)
+  end,
+})
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
