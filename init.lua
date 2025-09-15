@@ -272,6 +272,9 @@ vim.keymap.set('n', '<leader>dvc', '<cmd>DiffviewClose<cr>', { desc = '[D]iff[V]
 vim.keymap.set('n', '<leader>dvh', '<cmd>DiffviewFileHistory<cr>', { desc = '[D]iff[V]iew file [H]istory' })
 vim.keymap.set('n', '<leader>dvf', '<cmd>DiffviewFileHistory %<cr>', { desc = '[D]iff[V]iew current [F]ile history' })
 
+-- Lazy.nvim keybinding
+vim.keymap.set('n', '<leader>lv', '<cmd>Lazy<cr>', { desc = '[L]azy [V]im' })
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -738,10 +741,14 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch' },
-        { '<leader>t', group = '[T]oggle' },
+        { '<leader>t', group = '[T]abs' },
+        { '<leader>x', group = 'E[X]ecute' },
+        { '<leader>l', group = '[L]azy' },
+        { '<leader>g', group = '[G]it' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
-        { '<leader>dv', group = '[D]iff[V]iew' },
         { '<leader>gb', group = '[G]it [B]lame' },
+        { '<leader>d', group = '[D]iff' },
+        { '<leader>dv', group = '[D]iff[V]iew' },
       },
     },
   },
