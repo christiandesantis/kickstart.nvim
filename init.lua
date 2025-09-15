@@ -308,16 +308,24 @@ end, { desc = 'e[X]ecute [B]iome' })
 
 vim.keymap.set('n', '<leader>e', ':NvimTreeToggle<CR>', { desc = 'Toggle NvimTree' })
 
--- Tabby
-vim.keymap.set('n', '<leader>ta', ':$tabnew<CR>', { noremap = true, desc = '[T]ab [A]dd new' })
-vim.keymap.set('n', '<leader>tc', ':tabclose<CR>', { noremap = true, desc = '[T]ab [C]lose' })
-vim.keymap.set('n', '<leader>to', ':tabonly<CR>', { noremap = true, desc = '[T]ab [O]nly (close others)' })
-vim.keymap.set('n', '<leader>tn', ':tabn<CR>', { noremap = true, desc = '[T]ab [N]ext' })
-vim.keymap.set('n', '<leader>tp', ':tabp<CR>', { noremap = true, desc = '[T]ab [P]revious' })
--- move current tab to previous position
-vim.keymap.set('n', '<leader>tmp', ':-tabmove<CR>', { noremap = true, desc = '[T]ab [M]ove [P]revious' })
--- move current tab to next position
-vim.keymap.set('n', '<leader>tmn', ':+tabmove<CR>', { noremap = true, desc = '[T]ab [M]ove [N]ext' })
+-- Barbar buffer management (tabs-like interface)
+vim.keymap.set('n', '<leader>ta', '<Cmd>BufferPick<CR>', { noremap = true, desc = '[T]ab pick [A]ny buffer' })
+vim.keymap.set('n', '<leader>tc', '<Cmd>BufferClose<CR>', { noremap = true, desc = '[T]ab [C]lose current' })
+vim.keymap.set('n', '<leader>to', '<Cmd>BufferCloseAllButCurrent<CR>', { noremap = true, desc = '[T]ab [O]nly (close others)' })
+vim.keymap.set('n', '<leader>tn', '<Cmd>BufferNext<CR>', { noremap = true, desc = '[T]ab [N]ext' })
+vim.keymap.set('n', '<leader>tp', '<Cmd>BufferPrevious<CR>', { noremap = true, desc = '[T]ab [P]revious' })
+-- move current buffer to previous/next position
+vim.keymap.set('n', '<leader>tmp', '<Cmd>BufferMovePrevious<CR>', { noremap = true, desc = '[T]ab [M]ove [P]revious' })
+vim.keymap.set('n', '<leader>tmn', '<Cmd>BufferMoveNext<CR>', { noremap = true, desc = '[T]ab [M]ove [N]ext' })
+
+-- Additional useful Barbar commands
+vim.keymap.set('n', '<leader>t1', '<Cmd>BufferGoto 1<CR>', { noremap = true, desc = 'Go to buffer 1' })
+vim.keymap.set('n', '<leader>t2', '<Cmd>BufferGoto 2<CR>', { noremap = true, desc = 'Go to buffer 2' })
+vim.keymap.set('n', '<leader>t3', '<Cmd>BufferGoto 3<CR>', { noremap = true, desc = 'Go to buffer 3' })
+vim.keymap.set('n', '<leader>t4', '<Cmd>BufferGoto 4<CR>', { noremap = true, desc = 'Go to buffer 4' })
+vim.keymap.set('n', '<leader>t5', '<Cmd>BufferGoto 5<CR>', { noremap = true, desc = 'Go to buffer 5' })
+vim.keymap.set('n', '<leader>tl', '<Cmd>BufferLast<CR>', { noremap = true, desc = '[T]ab go to [L]ast' })
+vim.keymap.set('n', '<leader>tP', '<Cmd>BufferPin<CR>', { noremap = true, desc = '[T]ab [P]in/unpin' })
 
 -- Global Diffview keybindings (defined here so they're always available)
 vim.keymap.set('n', '<leader>dvo', '<cmd>DiffviewOpen<cr>', { desc = '[D]iff[V]iew [O]pen' })
