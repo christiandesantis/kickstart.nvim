@@ -266,6 +266,12 @@ vim.keymap.set('n', '<leader>tmp', ':-tabmove<CR>', { noremap = true, desc = '[T
 -- move current tab to next position
 vim.keymap.set('n', '<leader>tmn', ':+tabmove<CR>', { noremap = true, desc = '[T]ab [M]ove [N]ext' })
 
+-- Global Diffview keybindings (defined here so they're always available)
+vim.keymap.set('n', '<leader>dvo', '<cmd>DiffviewOpen<cr>', { desc = '[D]iff[V]iew [O]pen' })
+vim.keymap.set('n', '<leader>dvc', '<cmd>DiffviewClose<cr>', { desc = '[D]iff[V]iew [C]lose' })
+vim.keymap.set('n', '<leader>dvh', '<cmd>DiffviewFileHistory<cr>', { desc = '[D]iff[V]iew file [H]istory' })
+vim.keymap.set('n', '<leader>dvf', '<cmd>DiffviewFileHistory %<cr>', { desc = '[D]iff[V]iew current [F]ile history' })
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -347,7 +353,7 @@ require('lazy').setup({
   -- options to `gitsigns.nvim`.
   --
   -- See `:help gitsigns` to understand what the configuration keys do
-  { -- Adds git related signs to the gutter, as well as utilities for managing changes
+  { -- Enhanced git integration with signs, hunks, and inline preview
     'lewis6991/gitsigns.nvim',
     opts = {
       signs = {
@@ -357,7 +363,318 @@ require('lazy').setup({
         topdelete = { text = '‾' },
         changedelete = { text = '~' },
       },
+      on_attach = function(bufnr)
+        local gitsigns = require 'gitsigns'
+
+        local function map(mode, l, r, opts)
+          opts = opts or {}
+          opts.buffer = bufnr
+          vim.keymap.set(mode, l, r, opts)
+        end
+
+        -- Navigation between hunks
+        map('n', ']c', function()
+          if vim.wo.diff then
+            vim.cmd.normal { ']c', bang = true }
+          else
+            gitsigns.nav_hunk 'next'
+          end
+        end, { desc = 'Next git hunk' })
+
+        map('n', '[c', function()
+          if vim.wo.diff then
+            vim.cmd.normal { '[c', bang = true }
+          else
+            gitsigns.nav_hunk 'prev'
+          end
+        end, { desc = 'Previous git hunk' })
+
+        -- Actions (using conventional <leader>h* prefix for hunks)
+        map('n', '<leader>hs', gitsigns.stage_hunk, { desc = '[H]unk [S]tage' })
+        map('n', '<leader>hr', gitsigns.reset_hunk, { desc = '[H]unk [R]eset' })
+        map('v', '<leader>hs', function()
+          gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' }
+        end, { desc = '[H]unk [S]tage' })
+        map('v', '<leader>hr', function()
+          gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
+        end, { desc = '[H]unk [R]eset' })
+        map('n', '<leader>hS', gitsigns.stage_buffer, { desc = '[H]unk [S]tage buffer' })
+        map('n', '<leader>hu', gitsigns.undo_stage_hunk, { desc = '[H]unk [U]ndo stage' })
+        map('n', '<leader>hR', gitsigns.reset_buffer, { desc = '[H]unk [R]eset buffer' })
+        map('n', '<leader>hp', gitsigns.preview_hunk, { desc = '[H]unk [P]review' })
+        map('n', '<leader>hP', gitsigns.preview_hunk_inline, { desc = '[H]unk [P]review inline' })
+        map('n', '<leader>hb', function()
+          gitsigns.blame_line { full = true }
+        end, { desc = '[H]unk [B]lame line' })
+        map('n', '<leader>hB', gitsigns.toggle_current_line_blame, { desc = '[H]unk toggle line [B]lame' })
+        map('n', '<leader>hd', gitsigns.diffthis, { desc = '[H]unk [D]iff this' })
+        map('n', '<leader>hD', function()
+          gitsigns.diffthis '~'
+        end, { desc = '[H]unk [D]iff this ~' })
+        map('n', '<leader>htd', gitsigns.toggle_deleted, { desc = '[H]unk [T]oggle [D]eleted' })
+
+        -- Text object
+        map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>', { desc = 'Git hunk text object' })
+      end,
     },
+  },
+
+  -- Diffview for side-by-side git diffs (VSCode source control equivalent)
+  {
+    'sindrets/diffview.nvim',
+    cmd = { 'DiffviewOpen', 'DiffviewClose', 'DiffviewToggleFiles', 'DiffviewFocusFiles', 'DiffviewRefresh', 'DiffviewFileHistory' },
+    config = function()
+      require('diffview').setup {
+        diff_binaries = false, -- Show diffs for binaries
+        enhanced_diff_hl = false, -- See ':h diffview-config-enhanced_diff_hl'
+        git_cmd = { 'git' }, -- The git executable followed by default args.
+        use_icons = true, -- Requires nvim-web-devicons
+        show_help_hints = true, -- Show hints for how to open the help panel
+        watch_index = true, -- Update views and index on git index changes
+        icons = { -- Only applies when use_icons is true.
+          folder_closed = '',
+          folder_open = '',
+        },
+        signs = {
+          fold_closed = '',
+          fold_open = '',
+          done = '✓',
+        },
+        view = {
+          -- Configure the layout and behavior of different types of views.
+          default = {
+            -- Config for changed files, and staged files in diff views.
+            layout = 'diff2_horizontal',
+            disable_diagnostics = true, -- Temporarily disable diagnostics for diff buffers while in the view.
+            winbar_info = false, -- See ':h diffview-config-view.x.winbar_info'
+          },
+          merge_tool = {
+            -- Config for conflicted files in diff views during a merge or rebase.
+            layout = 'diff3_horizontal',
+            disable_diagnostics = true, -- Temporarily disable diagnostics for diff buffers while in the view.
+            winbar_info = true, -- See ':h diffview-config-view.x.winbar_info'
+          },
+          file_history = {
+            -- Config for changed files in file history views.
+            layout = 'diff2_horizontal',
+            disable_diagnostics = true, -- Temporarily disable diagnostics for diff buffers while in the view.
+            winbar_info = false, -- See ':h diffview-config-view.x.winbar_info'
+          },
+        },
+        file_panel = {
+          listing_style = 'tree', -- One of 'list' or 'tree'
+          tree_options = { -- Only applies when listing_style is 'tree'
+            flatten_dirs = true, -- Flatten dirs that only contain one single dir
+            folder_statuses = 'only_folded', -- One of 'never', 'only_folded' or 'always'.
+          },
+          win_config = { -- See ':h diffview-config-win_config'
+            position = 'left',
+            width = 35,
+            win_opts = {},
+          },
+        },
+        file_history_panel = {
+          log_options = { -- See ':h diffview-config-log_options'
+            git = {
+              single_file = {
+                diff_merges = 'combined',
+              },
+              multi_file = {
+                diff_merges = 'first-parent',
+              },
+            },
+          },
+          win_config = { -- See ':h diffview-config-win_config'
+            position = 'bottom',
+            height = 16,
+            win_opts = {},
+          },
+        },
+        commit_log_panel = {
+          win_config = { -- See ':h diffview-config-win_config'
+            win_opts = {},
+          },
+        },
+        default_args = { -- Default args prepended to the arg-list for the listed commands
+          DiffviewOpen = {},
+          DiffviewFileHistory = {},
+        },
+        hooks = {}, -- See ':h diffview-config-hooks'
+        keymaps = {
+          disable_defaults = false, -- Disable the default keymaps
+          view = {
+            -- The `view` bindings are active in the diff buffers, only when the current
+            -- tabpage is a Diffview.
+            { 'n', '<tab>', '<cmd>DiffviewToggleFiles<cr>', { desc = 'Toggle the file panel.' } },
+            { 'n', 'gf', '<cmd>DiffviewGoToFile<cr>', { desc = 'Open the file in the previous tabpage' } },
+            { 'n', '<C-w><C-f>', '<cmd>DiffviewGoToFile<cr>', { desc = 'Open the file in the previous tabpage' } },
+            { 'n', '<C-w>gf', '<cmd>DiffviewGoToFile<cr>', { desc = 'Open the file in a new tabpage' } },
+            { 'n', '<leader>e', '<cmd>DiffviewToggleFiles<cr>', { desc = 'Toggle the file panel' } },
+            { 'n', '<leader>co', '<cmd>DiffviewClose<cr>', { desc = 'Close Diffview' } },
+          },
+          diff1 = {
+            -- Mappings in single pane diff layouts
+            { 'n', 'g?', '<cmd>h diffview-maps-diff1<cr>', { desc = 'Open the help panel' } },
+          },
+          diff2 = {
+            -- Mappings in 2-pane diff layouts
+            { 'n', 'g?', '<cmd>h diffview-maps-diff2<cr>', { desc = 'Open the help panel' } },
+          },
+          diff3 = {
+            -- Mappings in 3-pane diff layouts
+            { 'n', 'g?', '<cmd>h diffview-maps-diff3<cr>', { desc = 'Open the help panel' } },
+          },
+          diff4 = {
+            -- Mappings in 4-pane diff layouts
+            { 'n', 'g?', '<cmd>h diffview-maps-diff4<cr>', { desc = 'Open the help panel' } },
+          },
+          file_panel = {
+            { 'n', 'j', "<cmd>lua require'diffview.actions'.next_entry()<cr>", { desc = 'Bring the cursor to the next file entry' } },
+            { 'n', '<down>', "<cmd>lua require'diffview.actions'.next_entry()<cr>", { desc = 'Bring the cursor to the next file entry' } },
+            { 'n', 'k', "<cmd>lua require'diffview.actions'.prev_entry()<cr>", { desc = 'Bring the cursor to the previous file entry' } },
+            { 'n', '<up>', "<cmd>lua require'diffview.actions'.prev_entry()<cr>", { desc = 'Bring the cursor to the previous file entry' } },
+            { 'n', '<cr>', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', 'o', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', 'l', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', '<2-LeftMouse>', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', '-', "<cmd>lua require'diffview.actions'.toggle_stage_entry()<cr>", { desc = 'Stage / unstage the selected entry' } },
+            { 'n', 'S', "<cmd>lua require'diffview.actions'.stage_all()<cr>", { desc = 'Stage all entries' } },
+            { 'n', 'U', "<cmd>lua require'diffview.actions'.unstage_all()<cr>", { desc = 'Unstage all entries' } },
+            { 'n', 'X', "<cmd>lua require'diffview.actions'.restore_entry()<cr>", { desc = 'Restore entry to the state on the left side' } },
+            { 'n', 'L', "<cmd>lua require'diffview.actions'.open_commit_log()<cr>", { desc = 'Open the commit log panel' } },
+            { 'n', 'zo', "<cmd>lua require'diffview.actions'.open_fold()<cr>", { desc = 'Expand fold' } },
+            { 'n', 'zc', "<cmd>lua require'diffview.actions'.close_fold()<cr>", { desc = 'Collapse fold' } },
+            { 'n', 'za', "<cmd>lua require'diffview.actions'.toggle_fold()<cr>", { desc = 'Toggle fold' } },
+            { 'n', 'zR', "<cmd>lua require'diffview.actions'.open_all_folds()<cr>", { desc = 'Expand all folds' } },
+            { 'n', 'zM', "<cmd>lua require'diffview.actions'.close_all_folds()<cr>", { desc = 'Collapse all folds' } },
+            { 'n', '<c-b>', "<cmd>lua require'diffview.actions'.scroll_view(-0.25)<cr>", { desc = 'Scroll the view up' } },
+            { 'n', '<c-f>', "<cmd>lua require'diffview.actions'.scroll_view(0.25)<cr>", { desc = 'Scroll the view down' } },
+            { 'n', '<tab>', "<cmd>lua require'diffview.actions'.select_next_entry()<cr>", { desc = 'Open the diff for the next file' } },
+            { 'n', '<s-tab>', "<cmd>lua require'diffview.actions'.select_prev_entry()<cr>", { desc = 'Open the diff for the previous file' } },
+            { 'n', 'gf', "<cmd>lua require'diffview.actions'.goto_file_edit()<cr>", { desc = 'Open the file in the previous tabpage' } },
+            { 'n', '<C-w><C-f>', "<cmd>lua require'diffview.actions'.goto_file_edit()<cr>", { desc = 'Open the file in the previous tabpage' } },
+            { 'n', '<C-w>gf', "<cmd>lua require'diffview.actions'.goto_file_tab()<cr>", { desc = 'Open the file in a new tabpage' } },
+            { 'n', '<leader>e', "<cmd>lua require'diffview.actions'.toggle_files()<cr>", { desc = 'Toggle the file panel' } },
+            { 'n', '<leader>b', "<cmd>lua require'diffview.actions'.toggle_files()<cr>", { desc = 'Toggle the file panel' } },
+            { 'n', 'g<C-x>', "<cmd>lua require'diffview.actions'.cycle_layout()<cr>", { desc = 'Cycle through available layouts' } },
+            {
+              'n',
+              '[x',
+              "<cmd>lua require'diffview.actions'.prev_conflict()<cr>",
+              { desc = 'In the merge-tool: jump to the previous conflict' },
+            },
+            { 'n', ']x', "<cmd>lua require'diffview.actions'.next_conflict()<cr>", { desc = 'In the merge-tool: jump to the next conflict' } },
+            { 'n', 'g?', '<cmd>h diffview-maps-file-panel<cr>', { desc = 'Open the help panel' } },
+            { 'n', '<leader>co', '<cmd>DiffviewClose<cr>', { desc = 'Close Diffview' } },
+          },
+          file_history_panel = {
+            { 'n', 'g!', "<cmd>lua require'diffview.actions'.options()<cr>", { desc = 'Open the option panel' } },
+            {
+              'n',
+              '<C-A-d>',
+              "<cmd>lua require'diffview.actions'.open_in_diffview()<cr>",
+              { desc = 'Open the entry under the cursor in a diffview' },
+            },
+            {
+              'n',
+              'y',
+              "<cmd>lua require'diffview.actions'.copy_hash()<cr>",
+              { desc = 'Copy the commit hash of the entry under the cursor' },
+            },
+            { 'n', 'L', "<cmd>lua require'diffview.actions'.open_commit_log()<cr>", { desc = 'Show commit details' } },
+            { 'n', 'zR', "<cmd>lua require'diffview.actions'.open_all_folds()<cr>", { desc = 'Expand all folds' } },
+            { 'n', 'zM', "<cmd>lua require'diffview.actions'.close_all_folds()<cr>", { desc = 'Collapse all folds' } },
+            {
+              'n',
+              'j',
+              "<cmd>lua require'diffview.actions'.next_entry()<cr>",
+              { desc = 'Bring the cursor to the next file entry' },
+            },
+            {
+              'n',
+              '<down>',
+              "<cmd>lua require'diffview.actions'.next_entry()<cr>",
+              { desc = 'Bring the cursor to the next file entry' },
+            },
+            {
+              'n',
+              'k',
+              "<cmd>lua require'diffview.actions'.prev_entry()<cr>",
+              { desc = 'Bring the cursor to the previous file entry' },
+            },
+            {
+              'n',
+              '<up>',
+              "<cmd>lua require'diffview.actions'.prev_entry()<cr>",
+              { desc = 'Bring the cursor to the previous file entry' },
+            },
+            { 'n', '<cr>', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', 'o', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', '<2-LeftMouse>', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Open the diff for the selected entry' } },
+            { 'n', '<c-b>', "<cmd>lua require'diffview.actions'.scroll_view(-0.25)<cr>", { desc = 'Scroll the view up' } },
+            { 'n', '<c-f>', "<cmd>lua require'diffview.actions'.scroll_view(0.25)<cr>", { desc = 'Scroll the view down' } },
+            { 'n', '<tab>', "<cmd>lua require'diffview.actions'.select_next_entry()<cr>", { desc = 'Open the diff for the next file' } },
+            { 'n', '<s-tab>', "<cmd>lua require'diffview.actions'.select_prev_entry()<cr>", { desc = 'Open the diff for the previous file' } },
+            {
+              'n',
+              'gf',
+              "<cmd>lua require'diffview.actions'.goto_file_edit()<cr>",
+              { desc = 'Open the file in the previous tabpage' },
+            },
+            {
+              'n',
+              '<C-w><C-f>',
+              "<cmd>lua require'diffview.actions'.goto_file_edit()<cr>",
+              { desc = 'Open the file in the previous tabpage' },
+            },
+            { 'n', '<C-w>gf', "<cmd>lua require'diffview.actions'.goto_file_tab()<cr>", { desc = 'Open the file in a new tabpage' } },
+            { 'n', '<leader>e', "<cmd>lua require'diffview.actions'.toggle_files()<cr>", { desc = 'Toggle the file panel' } },
+            { 'n', '<leader>b', "<cmd>lua require'diffview.actions'.toggle_files()<cr>", { desc = 'Toggle the file panel' } },
+            { 'n', 'g<C-x>', "<cmd>lua require'diffview.actions'.cycle_layout()<cr>", { desc = 'Cycle through available layouts' } },
+            { 'n', 'g?', '<cmd>h diffview-maps-file-history-panel<cr>', { desc = 'Open the help panel' } },
+            { 'n', '<leader>co', '<cmd>DiffviewClose<cr>', { desc = 'Close Diffview' } },
+          },
+          option_panel = {
+            { 'n', '<tab>', "<cmd>lua require'diffview.actions'.select_entry()<cr>", { desc = 'Change the current option' } },
+            { 'n', 'q', "<cmd>lua require'diffview.actions'.close()<cr>", { desc = 'Close the panel' } },
+            { 'n', 'g?', '<cmd>h diffview-maps-option-panel<cr>', { desc = 'Open the help panel' } },
+          },
+          help_panel = {
+            { 'n', 'q', "<cmd>lua require'diffview.actions'.close()<cr>", { desc = 'Close help menu' } },
+            { 'n', '<esc>', "<cmd>lua require'diffview.actions'.close()<cr>", { desc = 'Close help menu' } },
+          },
+        },
+      }
+    end,
+  },
+
+  -- Git blame plugin (GitLens alternative)
+  {
+    'f-person/git-blame.nvim',
+    event = 'BufRead',
+    config = function()
+      require('gitblame').setup {
+        -- Note how the `gitblame_` prefix is omitted in `setup`
+        enabled = false, -- Start disabled, toggle with <leader>gb
+        message_template = ' <summary> • <date> • <author>',
+        message_when_not_committed = ' Oh please, commit this !',
+        highlight_group = 'Question',
+        set_extmark_options = {
+          priority = 7,
+        },
+        display_virtual_text = true,
+        ignored_filetypes = {},
+        delay = 1000,
+        virtual_text_column = nil, -- Show at end of line
+        use_blame_commit_file_urls = true,
+      }
+
+      -- Add keybindings for git blame (using conventional <leader>gb* prefix)
+      vim.keymap.set('n', '<leader>gbt', '<cmd>GitBlameToggle<cr>', { desc = '[G]it [B]lame [T]oggle' })
+      vim.keymap.set('n', '<leader>gbe', '<cmd>GitBlameEnable<cr>', { desc = '[G]it [B]lame [E]nable' })
+      vim.keymap.set('n', '<leader>gbd', '<cmd>GitBlameDisable<cr>', { desc = '[G]it [B]lame [D]isable' })
+      vim.keymap.set('n', '<leader>gbo', '<cmd>GitBlameOpenCommitURL<cr>', { desc = '[G]it [B]lame [O]pen commit URL' })
+    end,
   },
 
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
@@ -423,6 +740,8 @@ require('lazy').setup({
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        { '<leader>dv', group = '[D]iff[V]iew' },
+        { '<leader>gb', group = '[G]it [B]lame' },
       },
     },
   },
