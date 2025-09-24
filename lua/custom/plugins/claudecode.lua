@@ -1,7 +1,27 @@
 return {
   'coder/claudecode.nvim',
   dependencies = { 'folke/snacks.nvim' },
-  config = true,
+  config = function()
+    require('claudecode').setup {
+      diff_opts = {
+        open_in_new_tab = true, -- Open diff in a new tab for full window space
+        keep_terminal_focus = true, -- Keep cursor in the chat after diff opens
+        layout = 'vertical', -- Keep vertical layout for better readability
+      },
+    }
+
+    -- Add cleanup on Neovim exit to prevent zombie servers
+    vim.api.nvim_create_autocmd('VimLeavePre', {
+      callback = function()
+        -- Stop Claude Code server cleanly
+        local ok, claudecode = pcall(require, 'claudecode')
+        if ok and claudecode.stop then
+          pcall(claudecode.stop)
+        end
+      end,
+      desc = 'Stop Claude Code server on exit',
+    })
+  end,
   keys = {
     { '<leader>a', nil, desc = 'AI/Claude Code' },
     { '<leader>ac', '<cmd>ClaudeCode<cr>', desc = 'Toggle Claude' },

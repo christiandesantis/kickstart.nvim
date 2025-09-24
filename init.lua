@@ -90,6 +90,27 @@ vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 -- optionally enable 24-bit colour
 vim.opt.termguicolors = true
+
+-- Define nvim-tree diagnostic signs VERY early to prevent sign errors
+-- These must be defined before ANY plugin loads that might use diagnostics
+local function ensure_nvim_tree_signs()
+  -- Define with simple, always-available highlight groups
+  vim.fn.sign_define('NvimTreeDiagnosticErrorIcon', { text = '●', texthl = 'ErrorMsg' })
+  vim.fn.sign_define('NvimTreeDiagnosticWarnIcon', { text = '●', texthl = 'WarningMsg' })
+  vim.fn.sign_define('NvimTreeDiagnosticInfoIcon', { text = '●', texthl = 'Directory' })
+  vim.fn.sign_define('NvimTreeDiagnosticHintIcon', { text = '●', texthl = 'Comment' })
+
+end
+
+ensure_nvim_tree_signs()
+
+-- Also ensure signs exist after any plugin resets
+vim.api.nvim_create_autocmd({'VimEnter', 'ColorScheme'}, {
+  callback = function()
+    vim.schedule(ensure_nvim_tree_signs)
+  end,
+  desc = 'Ensure nvim-tree diagnostic signs always exist'
+})
 -- End for nvim-tree
 
 -- Set <space> as the leader key
@@ -177,53 +198,26 @@ vim.o.confirm = true
 -- Enable automatic file reloading when changed externally
 vim.o.autoread = true
 
--- Enhanced auto-reload with activity tracking and tmux support
-local last_activity = vim.loop.now()
-local check_timer = nil
+-- Indentation settings (fallback for guess-indent.nvim)
+vim.opt.tabstop = 3
+vim.opt.shiftwidth = 3
+vim.opt.smarttab = true
+vim.opt.expandtab = false
 
--- Track user activity
-vim.api.nvim_create_augroup("ActivityTracker", { clear = true })
-vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "TextChanged", "TextChangedI" }, {
-  group = "ActivityTracker",
-  pattern = "*",
-  callback = function()
-    last_activity = vim.loop.now()
-  end,
-})
-
--- Create timer for checking file changes
-check_timer = vim.uv.new_timer()
-check_timer:start(2000, 2000, vim.schedule_wrap(function()
-  local now = vim.loop.now()
-  local idle_time = now - last_activity
-  
-  -- Only check if idle for 2+ seconds and buffer has no unsaved changes
-  if idle_time >= 2000 and not vim.bo.modified then
-    vim.cmd("silent! checktime")
-    -- Force screen redraw for tmux visibility
-    vim.cmd("redraw")
-  end
-end))
-
--- Also check on focus gained and buffer enter (immediate response)
-vim.api.nvim_create_augroup("AutoRefresh", { clear = true })
-vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
-  group = "AutoRefresh",
-  pattern = "*",
-  callback = function()
-    if vim.fn.mode() ~= "c" and not vim.bo.modified then
-      vim.cmd("checktime")
-      vim.cmd("redraw")
-    end
-  end,
+-- Native auto-reload without custom timers
+vim.api.nvim_create_augroup('AutoRefresh', { clear = true })
+vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI' }, {
+  group = 'AutoRefresh',
+  pattern = '*',
+  command = 'if mode() != "c" | checktime | endif',
 })
 
 -- Handle file change notifications
-vim.api.nvim_create_autocmd("FileChangedShellPost", {
-  group = "AutoRefresh",
-  pattern = "*",
+vim.api.nvim_create_autocmd('FileChangedShellPost', {
+  group = 'AutoRefresh',
+  pattern = '*',
   callback = function()
-    vim.notify("File reloaded from disk", vim.log.levels.INFO)
+    vim.notify('File reloaded from disk', vim.log.levels.INFO)
   end,
 })
 
@@ -288,7 +282,7 @@ vim.api.nvim_create_autocmd('TermOpen', {
   end,
 })
 
-local job_id = 0
+local job_id = nil
 vim.keymap.set('n', '<leader>xt', function()
   vim.cmd.vnew()
   vim.cmd.term()
@@ -299,11 +293,15 @@ vim.keymap.set('n', '<leader>xt', function()
 end, { desc = 'e[X]ecute [T]erminal' })
 
 vim.keymap.set('n', '<leader>xc', function()
-  vim.fn.chansend(job_id, { 'pnpm typecheck\r\n' })
+  if job_id then
+    vim.fn.chansend(job_id, { 'pnpm typecheck\r\n' })
+  end
 end, { desc = 'e[X]ecute type[C]heck' })
 
 vim.keymap.set('n', '<leader>xb', function()
-  vim.fn.chansend(job_id, { 'pnpm check\r\n' })
+  if job_id then
+    vim.fn.chansend(job_id, { 'pnpm check\r\n' })
+  end
 end, { desc = 'e[X]ecute [B]iome' })
 
 vim.keymap.set('n', '<leader>e', ':NvimTreeToggle<CR>', { desc = 'Toggle NvimTree' })
@@ -347,7 +345,6 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
   end
 end
 
----@type vim.Option
 local rtp = vim.opt.rtp
 rtp:prepend(lazypath)
 
@@ -1053,6 +1050,14 @@ require('lazy').setup({
           --
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
           local client = vim.lsp.get_client_by_id(event.data.client_id)
+
+          -- Attach navic for breadcrumb navigation
+          if client and client.server_capabilities.documentSymbolProvider then
+            local navic_ok, navic = pcall(require, 'nvim-navic')
+            if navic_ok then
+              navic.attach(client, event.buf)
+            end
+          end
           if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
@@ -1195,6 +1200,14 @@ require('lazy').setup({
           end,
         },
       }
+
+      -- Clean up LSP servers on exit to prevent zombie processes
+      vim.api.nvim_create_autocmd('VimLeavePre', {
+        callback = function()
+          vim.lsp.stop_client(vim.lsp.get_clients())
+        end,
+        desc = 'Stop all LSP servers on exit',
+      })
     end,
   },
 
@@ -1356,7 +1369,6 @@ require('lazy').setup({
     'folke/tokyonight.nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     config = function()
-      ---@diagnostic disable-next-line: missing-fields
       require('tokyonight').setup {
         styles = {
           comments = { italic = false }, -- Disable italics in comments
@@ -1405,6 +1417,17 @@ require('lazy').setup({
       statusline.section_location = function()
         return '%2l:%-2v'
       end
+
+
+      -- Global listchars configuration for ALL files
+      vim.opt.list = true
+      vim.opt.listchars = {
+        tab = '│ ', -- Same line character for tabs
+        trail = '·',
+        extends = '»',
+        precedes = '«',
+      }
+
 
       -- ... and there is more!
       --  Check out: https://github.com/echasnovski/mini.nvim
