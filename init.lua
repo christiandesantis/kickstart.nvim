@@ -99,17 +99,16 @@ local function ensure_nvim_tree_signs()
   vim.fn.sign_define('NvimTreeDiagnosticWarnIcon', { text = '●', texthl = 'WarningMsg' })
   vim.fn.sign_define('NvimTreeDiagnosticInfoIcon', { text = '●', texthl = 'Directory' })
   vim.fn.sign_define('NvimTreeDiagnosticHintIcon', { text = '●', texthl = 'Comment' })
-
 end
 
 ensure_nvim_tree_signs()
 
 -- Also ensure signs exist after any plugin resets
-vim.api.nvim_create_autocmd({'VimEnter', 'ColorScheme'}, {
+vim.api.nvim_create_autocmd({ 'VimEnter', 'ColorScheme' }, {
   callback = function()
     vim.schedule(ensure_nvim_tree_signs)
   end,
-  desc = 'Ensure nvim-tree diagnostic signs always exist'
+  desc = 'Ensure nvim-tree diagnostic signs always exist',
 })
 -- End for nvim-tree
 
@@ -238,6 +237,8 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
 -- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+-- Additional ergonomic binding using Alt+n (conflict-free with terminal apps)
+vim.keymap.set('t', '<A-n>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
@@ -303,6 +304,12 @@ vim.keymap.set('n', '<leader>xb', function()
     vim.fn.chansend(job_id, { 'pnpm check\r\n' })
   end
 end, { desc = 'e[X]ecute [B]iome' })
+
+vim.keymap.set('n', '<leader>xg', function()
+  if job_id then
+    vim.fn.chansend(job_id, { 'git log --graph --oneline --decorate --all\r\n' })
+  end
+end, { desc = 'e[X]ecute [G]it [G]raph' })
 
 vim.keymap.set('n', '<leader>e', ':NvimTreeToggle<CR>', { desc = 'Toggle NvimTree' })
 
@@ -560,7 +567,40 @@ require('lazy').setup({
           DiffviewOpen = {},
           DiffviewFileHistory = {},
         },
-        hooks = {}, -- See ':h diffview-config-hooks'
+        hooks = {
+          diff_buf_win_enter = function(bufnr, winid, ctx)
+            -- For 'b' side buffers (the actual new file content)
+            if ctx.symbol == 'b' then
+              vim.defer_fn(function()
+                if vim.api.nvim_win_is_valid(winid) then
+                  local wins = vim.api.nvim_tabpage_list_wins(0)
+                  local null_win = nil
+
+                  -- Find the window with the null buffer (empty side of new file)
+                  for _, win in ipairs(wins) do
+                    if win ~= winid then
+                      local buf = vim.api.nvim_win_get_buf(win)
+                      local name = vim.api.nvim_buf_get_name(buf)
+                      if name:match 'diffview://null' or name:match 'diffview://.*//0/' then
+                        null_win = win
+                        break
+                      end
+                    end
+                  end
+
+                  -- If we found the null buffer window, close only that window
+                  if null_win then
+                    -- Close only the null buffer window, preserving file panel
+                    vim.api.nvim_win_close(null_win, true)
+
+                    -- Let the window naturally expand to fill available horizontal space
+                    -- No need to manually resize - diffview will handle layout automatically
+                  end
+                end
+              end, 100) -- Longer delay to ensure diffview layout is stable
+            end
+          end,
+        }, -- See ':h diffview-config-hooks'
         keymaps = {
           disable_defaults = false, -- Disable the default keymaps
           view = {
@@ -1423,7 +1463,6 @@ require('lazy').setup({
         return '%2l:%-2v'
       end
 
-
       -- Global listchars configuration for ALL files
       vim.opt.list = true
       vim.opt.listchars = {
@@ -1432,7 +1471,6 @@ require('lazy').setup({
         extends = '»',
         precedes = '«',
       }
-
 
       -- ... and there is more!
       --  Check out: https://github.com/echasnovski/mini.nvim
