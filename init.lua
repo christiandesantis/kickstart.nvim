@@ -842,6 +842,7 @@ require('lazy').setup({
         { '<leader>t', group = '[T]abs' },
         { '<leader>x', group = 'E[X]ecute' },
         { '<leader>l', group = '[L]azy' },
+        { '<leader>a', group = '[A]I Assistants' },
         { '<leader>g', group = '[G]it' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { '<leader>gb', group = '[G]it [B]lame' },
