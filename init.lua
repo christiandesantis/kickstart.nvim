@@ -487,7 +487,22 @@ require('lazy').setup({
     },
   },
 
-  -- Diffview for side-by-side git diffs (VSCode source control equivalent)
+  -- VSCode-style diff with two-tier highlighting (line + character level)
+  -- Using local fork for development/testing
+  {
+    dir = '~/projects/codediff.nvim',
+    name = 'codediff.nvim',
+    dependencies = { 'MunifTanjim/nui.nvim' },
+    cmd = 'CodeDiff',
+    keys = {
+      { '<leader>cd', '<cmd>CodeDiff<cr>', desc = '[C]ode [D]iff (VSCode style)' },
+    },
+    config = function()
+      require('codediff').setup {}
+    end,
+  },
+
+  -- Diffview for side-by-side git diffs
   {
     'sindrets/diffview.nvim',
     cmd = { 'DiffviewOpen', 'DiffviewClose', 'DiffviewToggleFiles', 'DiffviewFocusFiles', 'DiffviewRefresh', 'DiffviewFileHistory' },
@@ -1418,6 +1433,17 @@ require('lazy').setup({
         styles = {
           comments = { italic = false }, -- Disable italics in comments
         },
+        on_highlights = function(hl, c)
+          -- Pure color glow: only elevate the dominant channel, keep others at base bg level
+          -- Base bg is #1a1b26 (R=26, G=27, B=38), so non-dominant channels match it exactly
+          hl.DiffAdd = { bg = '#1a5e26' }     -- R=26 G=94 B=38 — pure green, zero gray
+          hl.DiffDelete = { bg = '#5e1b26' }  -- R=94 G=27 B=38 — pure red, zero gray
+          hl.DiffChange = { bg = '#1b1c28' }
+          hl.DiffText = { bg = '#2d3a5c' }
+          -- Brighten comments so they're readable on intense diff backgrounds
+          -- Default #565f89 is too dim against green/red; #737aa2 stays "comment-like"
+          hl.Comment = { fg = '#737aa2', italic = false }
+        end,
       }
 
       -- Load the colorscheme here.
