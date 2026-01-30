@@ -1295,7 +1295,7 @@ require('lazy').setup({
           return nil
         else
           return {
-            timeout_ms = 500,
+            timeout_ms = 1000,
             lsp_format = 'fallback',
           }
         end
@@ -1435,8 +1435,8 @@ require('lazy').setup({
         on_highlights = function(hl, c)
           -- Pure color glow: only elevate the dominant channel, keep others at base bg level
           -- Base bg is #1a1b26 (R=26, G=27, B=38), so non-dominant channels match it exactly
-          hl.DiffAdd = { bg = '#1a5e26' }     -- R=26 G=94 B=38 — pure green, zero gray
-          hl.DiffDelete = { bg = '#5e1b26' }  -- R=94 G=27 B=38 — pure red, zero gray
+          hl.DiffAdd = { bg = '#1a5e26' } -- R=26 G=94 B=38 — pure green, zero gray
+          hl.DiffDelete = { bg = '#5e1b26' } -- R=94 G=27 B=38 — pure red, zero gray
           hl.DiffChange = { bg = '#1b1c28' }
           hl.DiffText = { bg = '#2d3a5c' }
           -- Brighten comments so they're readable on intense diff backgrounds
