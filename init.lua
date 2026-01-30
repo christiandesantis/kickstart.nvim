@@ -488,10 +488,9 @@ require('lazy').setup({
   },
 
   -- VSCode-style diff with two-tier highlighting (line + character level)
-  -- Using local fork for development/testing
   {
-    dir = '~/projects/codediff.nvim',
-    name = 'codediff.nvim',
+    'christiandesantis/codediff.nvim',
+    branch = 'feat/staging-and-explorer-actions',
     dependencies = { 'MunifTanjim/nui.nvim' },
     cmd = 'CodeDiff',
     keys = {
