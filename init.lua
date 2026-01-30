@@ -497,7 +497,21 @@ require('lazy').setup({
       { '<leader>cd', '<cmd>CodeDiff<cr>', desc = '[C]ode [D]iff (VSCode style)' },
     },
     config = function()
-      require('codediff').setup {}
+      require('codediff').setup {
+        highlights = {
+          char_brightness = 1.25,
+        },
+      }
+
+      -- Make text more prominent while preserving syntax colors
+      vim.api.nvim_set_hl(0, 'CodeDiffCharInsert', {
+        bg = vim.api.nvim_get_hl(0, { name = 'CodeDiffCharInsert' }).bg,
+        bold = true,
+      })
+      vim.api.nvim_set_hl(0, 'CodeDiffCharDelete', {
+        bg = vim.api.nvim_get_hl(0, { name = 'CodeDiffCharDelete' }).bg,
+        bold = true,
+      })
     end,
   },
 
