@@ -489,7 +489,7 @@ require('lazy').setup({
 
   -- VSCode-style diff with two-tier highlighting (line + character level)
   {
-    'christiandesantis/codediff.nvim',
+    'esmuellert/codediff.nvim',
     branch = 'feat/staging-and-explorer-actions',
     dependencies = { 'MunifTanjim/nui.nvim' },
     cmd = 'CodeDiff',
