@@ -208,7 +208,7 @@ vim.api.nvim_create_augroup('AutoRefresh', { clear = true })
 vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI' }, {
   group = 'AutoRefresh',
   pattern = '*',
-  command = 'if mode() != "c" | checktime | endif',
+  command = 'if mode() != "c" && &buftype != "terminal" | checktime | endif',
 })
 
 -- Handle file change notifications
